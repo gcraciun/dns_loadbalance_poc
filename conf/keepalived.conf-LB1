@@ -1,0 +1,97 @@
+! Configuration File for keepalived
+
+global_defs {
+   router_id LB-001
+   notification_email {
+	 gcraciun@dnspoc.com
+	}
+   notification_email_from lb01@dnspoc.com
+   smtp_server 192.168.30.3
+   smtp_connect_timeout 30
+}
+
+vrrp_sync_group VG_1 {
+    group {
+        LB_EXT_NET
+        LB_INT_NET
+	smtp_alert
+    }
+}
+
+vrrp_instance LB_EXT_NET {
+    state BACKUP
+    interface ens34
+    virtual_router_id 53
+    priority 100
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+    }
+    virtual_ipaddress {
+        10.10.10.10 dev ens34
+    }
+    nopreempt
+    smtp_alert
+}
+
+vrrp_instance LB_INT_NET {
+    state BACKUP
+    interface ens35
+    virtual_router_id 53
+    priority 100
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+    }
+    virtual_ipaddress {
+        10.10.53.10 dev ens35
+    }
+    nopreempt
+    smtp_alert
+}
+
+virtual_server 10.10.10.10 53 {
+    delay_loop 1
+    lb_algo rr 
+    lb_kind NAT
+    persistence_timeout 50
+    protocol TCP
+
+    real_server 10.10.53.53 53 {
+        weight 1
+        MISC_CHECK {
+            misc_path "dig +time=1 +tcp @10.10.53.53 tcp.dnspoc.com in a"
+        }
+    }
+
+    real_server 10.10.53.54 53 {
+        weight 1
+	MISC_CHECK {
+	    misc_path "dig +time=1 +tcp @10.10.53.54 tcp.dnspoc.com in a"
+	}
+    }
+}
+
+virtual_server 10.10.10.10 53 {
+    delay_loop 1
+    lb_algo rr 
+    lb_kind NAT
+    persistence_timeout 50
+    protocol UDP
+
+    real_server 10.10.53.53 53 {
+        weight 1
+        MISC_CHECK {
+            misc_path "dig +time=1 @10.10.53.53 udp.dnspoc.com in a"
+        }
+    }
+
+    real_server 10.10.53.54 53 {
+        weight 1
+	MISC_CHECK {
+	    misc_path "dig +time=1 @10.10.53.54 udp.dnspoc.com in a"
+	}
+    }
+}
